@@ -1,0 +1,20 @@
+{
+  "name": "wapi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aspnet/signalr": "^1.1.4",
+    "@microsoft/signalr": "^3.1.13",
+    "file-base64": "^1.0.0",
+    "inquirer": "^7.3.3",
+    "mime-types": "^2.1.29",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.12.5"
+  }
+}
