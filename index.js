@@ -165,7 +165,7 @@ let mainModule = (brandnumber) => {
     connection.on("MessageOutForWapi", (author, msg) => {
         //  console.log(author);
         //  console.log(msg);
-
+//
         if (wainfo.me._serialized == msg.from) {
             client.isRegisteredUser(msg.to).then((isWaNumber) => {
                 console.log(`Registered Number: ${isWaNumber}`);
