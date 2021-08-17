@@ -10,11 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "@aspnet/signalr": "^1.1.4",
-    "@microsoft/signalr": "^3.1.13",
+    "@microsoft/signalr": "^3.1.17",
     "file-base64": "^1.0.0",
     "inquirer": "^7.3.3",
-    "mime-types": "^2.1.29",
+    "mime-types": "^2.1.31",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.12.5"
+    "whatsapp-web.js": "^1.13.2"
   }
 }

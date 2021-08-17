@@ -44,7 +44,7 @@ fs.readdir(directoryPath, function (err, files) {
 let mainModule = (brandnumber) => {
 
     let connection = new signalR.HubConnectionBuilder()
-        .withUrl(baseurl + "/whatsapphub?user="+brandnumber.replace("@c.us.json",""))
+        .withUrl(baseurl + "/whatsapphub?user=" + brandnumber.replace("@c.us.json", ""))
         .withAutomaticReconnect([100, 500, 1000, 5000, 7500, 10000])
         .build();
 
@@ -62,7 +62,7 @@ let mainModule = (brandnumber) => {
     if (fs.existsSync(SESSION_FILE_PATH)) {
         sessionCfg = require(SESSION_FILE_PATH);
     }
-    const client = new Client({ puppeteer: { headless: false }, session: sessionCfg });
+    const client = new Client({ puppeteer: { headless: false, executablePath: "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe" }, session: sessionCfg });
 
     client.on('qr', (qr) => {
         console.log('QR RECEIVED', qr);
@@ -94,12 +94,38 @@ let mainModule = (brandnumber) => {
     });
 
     function ConnectionLogger(msg) {
-        if (msg.to == "4317966840@c.us" || msg.to == "4312366060@c.us" || msg.to == "4319094500@c.us") {
+        if (msg.to == "4319094500@c.us") {
             var date = new Date();
             var day = date.getDay();
             var hour = date.getHours();
-            var alican = "4368110285417";
+            var kisi = "905510348088";
+            var eymen = "905422821828";
+            var reportnumber = '';
+            if (day == 3) {
+                if (hour >= 20) {
+                    reportnumber = eymen;
+                }
+            } else {
+                if (hour >= 20) {
+                    reportnumber = kisi;
+                }
+            }
+            if (reportnumber == '')
+                return;
+            var message = msg.from + "\r\n" + msg.body;
+            client.sendMessage(reportnumber + "@c.us", message);
+            return;
+        }
+        if (
+            msg.to == "4317966840@c.us" ||
+            msg.to == "4312366060@c.us"
+        ) {
+            var date = new Date();
+            var day = date.getDay();
+            var hour = date.getHours();
+            var alican = "905510348088";
             var reportnumber = "436603941907";
+            // reportnumber='436602221903';
             if (day >= 1 && day <= 5) {
                 if (hour >= 16 && hour <= 24) {
                     reportnumber = alican;
@@ -139,8 +165,8 @@ let mainModule = (brandnumber) => {
             message.mediaKey = "";
         if (message.body == undefined)
             message.body = "";
-          //  console.log(JSON.stringify(wainfo));
-          //  console.log(JSON.stringify(message));
+        //  console.log(JSON.stringify(wainfo));
+        //  console.log(JSON.stringify(message));
         connection.invoke("MessageIn", wainfo, message).catch(function (err) {
             console.log(err);
         });
@@ -150,103 +176,164 @@ let mainModule = (brandnumber) => {
             pp = "";
         connection.invoke("UpdateCustomer", message, contact, pp);
         if (msg.hasMedia) {
-            const attachmentData = await msg.downloadMedia();
-            let ex = mime.extension(attachmentData.mimetype);
-            let bs64 = attachmentData.data;
-            base64.decode(bs64, 'c:\\vhost\\api.martireisen.at\\WpMediaFiles\\' + msg.id.id + '.' + ex, function (err, output) {
-                console.log(output);
+            msg.downloadMedia().then((attachmentData) => {
+                let ex = mime.extension(attachmentData.mimetype);
+                let bs64 = attachmentData.data;
+                base64.decode(bs64, 'c:\\vhost\\api.martireisen.at\\WpMediaFiles\\' + msg.id.id + '.' + ex, function (err, output) {
+                    setTimeout(function () {
+                        connection.invoke("Media", { waid: msg.id.id, mimetype: attachmentData.mimetype, extensions: ex, filename: attachmentData.filename, Length: attachmentData.data.length });
+                    }, 1500);
+                    console.log(output);
+                });
+
+              //  console.log({ waid: msg.id.id, mimetype: attachmentData.mimetype, extensions: ex, filename: attachmentData.filename, Length: attachmentData.data.length });
+
+            }).catch((err) => {
+                console.log(err)
             });
-            //   var k = { MessageId: msg.id.id, MimeType: attachmentData.mimetype, Filename: attachmentData.filename, Length: attachmentData.data.length };
-            //   console.log(JSON.stringify(k))
-            connection.invoke("Media", { waid: msg.id.id, mimetype: attachmentData.mimetype, extensions: ex, filename: attachmentData.filename, Length: attachmentData.data.length });
         }
     });
+    connection.on("TryDeleteForWapi", (wanumber, cusnumber, waid) => {
+        if (wainfo.me._serialized == wanumber) {
+            client.getChatById(cusnumber).then(function (chat) {
+                chat
+                    .fetchMessages({ limit: 50 })
+                    .then(function (messagelist) {
+                        var index = messagelist.findIndex((e) => e.id.id == waid);
+                        if (index != -1) {
+                            var message = messagelist.splice(index, 1)[0];
+                            message.delete(true).then(function (res) {
+                                connection
+                                    .invoke("MessageAck", waid, 900)
+                                    .catch(function (err) {
+                                        console.log(err);
+                                    });
+                            });
+                        }
+                    })
+                    .catch(function (err) {
+                        console.log(err);
+                    });
+            });
+        }
+    });
+    connection.on("ReGetMessageForApi", (wanumber, cusnumber, waid) => {
+        if (wainfo.me._serialized == wanumber) {
+            client.getChatById(cusnumber).then(function (chat) {
+                chat
+                    .fetchMessages({ limit: 50 })
+                    .then(function (messagelist) {
+                        var index = messagelist.findIndex((e) => e.id.id == waid);
+                        if (index != -1) {
+                            var message = messagelist.splice(index, 1)[0];
+                            connection
+                                .invoke("ReGetMessage", wanumber, cusnumber, waid, message.body)
+                                .catch(function (err) {
+                                    console.log(err);
+                                });
 
+                        }
+                    })
+                    .catch(function (err) {
+                        console.log(err);
+                    });
+            });
+        }
+    });
     connection.on("MessageOutForWapi", (author, msg) => {
         //  console.log(author);
         //  console.log(msg);
-//
+        //
         if (wainfo.me._serialized == msg.from) {
-            client.isRegisteredUser(msg.to).then((isWaNumber) => {
-                console.log(`Registered Number: ${isWaNumber}`);
-                if (isWaNumber) {
-                  if (msg.hasMedia) {
-                        var path = 'C:\\vhost\\api.martireisen.at\\WpMediaFiles\\';
-                        var media = MessageMedia.fromFilePath(path + msg.mediaKey);
-                        client.sendMessage(msg.to, media, { caption: msg.body }).then(function (sendedmsg) {
-                            media.data = "";
-                            var sended = {
-                                "fromMe": sendedmsg.fromMe,
-                                "from": sendedmsg.from,
-                                "to": sendedmsg.to,
-                                "timestamp": sendedmsg.timestamp,
-                                "id": sendedmsg.id.id,
-                                "body": sendedmsg.body,
-                                "hasMedia": sendedmsg.hasMedia,
-                                "mediaKey": JSON.stringify(media),
-                                "ack": sendedmsg.ack,
-                                "author": ""
-                            };
-                            if (sended.mediaKey == undefined)
-                                sended.mediaKey = "";
-                            if (sended.body == undefined)
-                                sended.body = "";
-                            //     console.log(JSON.stringify(sendedmsg));
-                            sendedmsg.mediaKey = msg.mediaKey;
-                            connection.invoke("MessageOut", author, sended).catch(function (err) {
-                                console.log(err);
-                            });
-                        });;
-                    }
-                    else {
-                        client.sendMessage(msg.to, msg.body).then(function (sendedmsg) {
-                            //   console.log(JSON.stringify(sendedmsg));
-                            var sended = {
-                                "fromMe": sendedmsg.fromMe,
-                                "from": sendedmsg.from,
-                                "to": sendedmsg.to,
-                                "timestamp": sendedmsg.timestamp,
-                                "id": sendedmsg.id.id,
-                                "body": sendedmsg.body,
-                                "hasMedia": sendedmsg.hasMedia,
-                                "mediaKey": sendedmsg.mediaKey,
-                                "ack": sendedmsg.ack,
-                                "author": ""
-                            };
-                            if (sended.mediaKey == undefined)
-                                sended.mediaKey = "";
-                            if (sended.body == undefined)
-                                sended.body = "";
-                            connection.invoke("MessageOut", author, sended).catch(function (err) {
-                                console.log(err);
-                            });
-                        }).catch(function (err) {
+            if (msg.to == "status@broadcast") {
+                SendMessage(author, msg, true)
+            } else {
+                client.isRegisteredUser(msg.to).then(result => {
+                    console.log(`Registered chatId: ${result}`);
+                    if (result) {
+                        SendMessage(author, msg, false)
+                    } else {
+                        var sended = {
+                            ack: 0,
+                            author: '',
+                            body: 'Kayıtlı bir Whatsapp hesabı bulunmuyor!',
+                            from: msg.from,
+                            fromMe: true,
+                            hasMedia: false,
+                            id: (Math.floor(Math.random() * 90000) + 10000).toString(),
+                            mediaKey: undefined,
+                            timestamp: 1604858280,
+                            to: msg.to
+                        };
+                        connection.invoke("MessageOut", author, sended).catch(function (err) {
                             console.log(err);
                         });
                     }
-                } else {
-                    var sended = {
-                        ack: 0,
-                        author: '',
-                        body: result.toString(),
-                        from: msg.from,
-                        fromMe: true,
-                        hasMedia: false,
-                        id: (Math.floor(Math.random() * 90000) + 10000).toString(),
-                        mediaKey: undefined,
-                        timestamp: 1604858280,
-                        to: msg.to
-                    };
-                    connection.invoke("MessageOut", author, sended).catch(function (err) {
-                        console.log(err);
-                    });
-                }
-            });
+                });
+            }
+
         }
 
     });
 
 
+    function SendMessage(author, msg, isStatus) {
+        if (msg.hasMedia) {
+            var path = 'C:\\vhost\\api.martireisen.at\\WpMediaFiles\\';
+            var media = MessageMedia.fromFilePath(path + msg.mediaKey);
+            client.sendMessage(msg.to, media, { caption: msg.body, isStatus: isStatus }).then(function (sendedmsg) {
+                media.data = "";
+                var sended = {
+                    "fromMe": sendedmsg.fromMe,
+                    "from": sendedmsg.from,
+                    "to": sendedmsg.to,
+                    "timestamp": sendedmsg.timestamp,
+                    "id": sendedmsg.id.id,
+                    "body": sendedmsg.body,
+                    "hasMedia": sendedmsg.hasMedia,
+                    "mediaKey": JSON.stringify(media),
+                    "ack": sendedmsg.ack,
+                    "author": ""
+                };
+                if (sended.mediaKey == undefined)
+                    sended.mediaKey = "";
+                if (sended.body == undefined)
+                    sended.body = "";
+                //     console.log(JSON.stringify(sendedmsg));
+                sendedmsg.mediaKey = msg.mediaKey;
+                connection.invoke("MessageOut", author, sended).catch(function (err) {
+                    console.log(err);
+                });
+            });;
+        }
+        else {
+            client.sendMessage(msg.to, msg.body, { isStatus }).then(function (sendedmsg) {
+                //   console.log(JSON.stringify(sendedmsg));
+                var sended = {
+                    "fromMe": sendedmsg.fromMe,
+                    "from": sendedmsg.from,
+                    "to": sendedmsg.to,
+                    "timestamp": sendedmsg.timestamp,
+                    "id": sendedmsg.id.id,
+                    "body": sendedmsg.body,
+                    "hasMedia": sendedmsg.hasMedia,
+                    "mediaKey": sendedmsg.mediaKey,
+                    "ack": sendedmsg.ack,
+                    "author": ""
+                };
+                if (sended.mediaKey == undefined)
+                    sended.mediaKey = "";
+                if (sended.body == undefined)
+                    sended.body = "";
+                connection.invoke("MessageOut", author, sended).catch(function (err) {
+                    console.log(err);
+                });
+            }).catch(function (err) {
+                console.log(err);
+            });
+        }
+
+    }
     client.on('message_ack', (msg, ack) => {
         connection.invoke("MessageAck", msg.id.id, ack).catch(function (eerr) {
             console.log(eerr);
